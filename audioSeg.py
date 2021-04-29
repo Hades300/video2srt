@@ -160,8 +160,11 @@ def audio_split(input_file,output_dir):
 
     cut_ranges = [(i, cut_samples[i], cut_samples[i+1]) for i in range(len(cut_samples) - 1)]
 
-    video_sub = {str(i) : [str(GetTime(((cut_samples[i])/sample_rate))), 
-                        str(GetTime(((cut_samples[i+1])/sample_rate)))] 
+    # video_sub = {str(i) : [str(GetTime(((cut_samples[i])/sample_rate))), 
+    #                     str(GetTime(((cut_samples[i+1])/sample_rate)))] 
+    #             for i in range(len(cut_samples) - 1)}
+    video_sub = {int(i) : [((cut_samples[i])/sample_rate), 
+                        ((cut_samples[i+1])/sample_rate)] 
                 for i in range(len(cut_samples) - 1)}
 
     for i, start, stop in tqdm(cut_ranges):
@@ -169,6 +172,7 @@ def audio_split(input_file,output_dir):
             os.path.join(output_dir, output_filename_prefix),
             i
         )
+        video_sub[output_file_path] = video_sub.pop(i)
         if not dry_run:
             print("Writing file {}".format(output_file_path))
             # wavfile.write(
@@ -181,6 +185,7 @@ def audio_split(input_file,output_dir):
             print("Not writing file {}".format(output_file_path))
     with open (os.path.join(output_dir,output_filename_prefix+".json"), 'w') as output:
         json.dump(video_sub, output)
+    return video_sub
 
 
 if __name__=="__main__":
