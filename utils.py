@@ -37,8 +37,8 @@ def millisec2delta(begin,base_seconds=0):
     """
     if isinstance(begin,str):
         begin = int(begin)
-    seconds = begin//1000 + base_seconds
-    milliseconds = begin - (begin//1000)*1000
+    milliseconds = begin - (begin//1000)*1000 + (base_seconds-base_seconds//1)*1000
+    seconds = begin//1000 + base_seconds//1
     return timedelta(0,seconds,milliseconds=milliseconds)
 
 def md5(payload: str)->str:
@@ -134,14 +134,13 @@ class ConvertAPIClient:
     config  = Config()
     signa = SignatureGenerator(**config.SDK)
     
-    def __call__(self,filename):
+    def __call__(self,filename,base_seconds=0):
         task_id = self.prepare(filename)
         self.upload(filename,task_id)
         self.merge(task_id)
         self.get_progress(task_id)
         data = self.get_result(task_id).get("data",[])
-        return self.compose(data)
-
+        return self.compose(data,base_seconds)
 
     def prepare(self,filename):
         stat = os.stat(filename)
@@ -229,7 +228,7 @@ class ConvertAPIClient:
             return f.read()
       
     def _call_api(self,action,params={},**kwargs):
-        LOG.warning(f"call_api {action} params: {params}")
+        # LOG.warning(f"call_api {action} params: {params}")
         resp = requests.post(self.baseURL+action,data=params,**kwargs)
         res = json.loads(resp.text)
         if res.get("ok",-1)!=0:
@@ -244,11 +243,11 @@ class ConvertAPIClient:
         return str(int(time.time()))
 
     @staticmethod
-    def compose(res_slices):
+    def compose(res_slices,base_seconds=0):
         subs = []
         for index,res_slice in enumerate(res_slices):
-            start = millisec2delta(res_slice.get("bg",0))
-            end = millisec2delta(res_slice.get("ed",0))
+            start = millisec2delta(res_slice.get("bg",0),base_seconds=base_seconds)
+            end = millisec2delta(res_slice.get("ed",0),base_seconds=base_seconds)
             title = srt.Subtitle(index=index,start = start,end=end,content=res_slice.get("onebest",""))
             subs.append(title)
         return subs
