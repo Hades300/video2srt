@@ -1,15 +1,17 @@
+import base64
 import hashlib
 import hmac
-import yaml
-import subprocess
-import logging
-import time
-import base64
-import requests
-import os
 import json
-import srt
+import logging
+import os
+import random
+import subprocess
+import time
 from datetime import timedelta
+
+import requests
+import srt
+import yaml
 
 LOG = logging.getLogger(__name__)
 
@@ -41,6 +43,16 @@ def millisec2delta(begin,base_seconds=0):
     seconds = begin//1000 + base_seconds//1
     return timedelta(0,seconds,milliseconds=milliseconds)
 
+def seq2lines(items):
+    items = list(map(str,items))
+    return "\n".join(items)
+
+def random_filename(ext="mp3")->str:
+    letters = "qwertyuiopasdfghjklzxcvbnm1234567890"
+    basename = "".join(random.sample(letters,5))
+    return os.path.join(basename+"."+ext)
+
+
 def md5(payload: str)->str:
     """MD5 encode
     params:
@@ -59,16 +71,19 @@ def sha1(payload:str,key:str="")->bytes:
         return hashlib.sha1(payload.encode()).digest()
     return hmac.new(key.encode(),payload.encode(),hashlib.sha1).digest() 
 
-def gen_mp3(filename,newbase)->subprocess.Popen:
+def gen_mp3(filename)->subprocess.Popen:
     """
     gen mp3 file from video file
     params:
         filename: source video file
-        newbase: the basename of new mp3 file
-    return:
+return:
         Popen object
     """
-    return subprocess.Popen(f"ffmpeg -i {filename} {newbase+'.mp3'}",shell=True)
+    basename = os.path.basename(filename)
+    pathname = os.path.dirname(filename)
+    audioname = os.path.join(pathname,basename+".mp3")
+    LOG.warning(f"Generate mp3 file {audioname}")
+    return subprocess.Popen(f"ffmpeg -i {filename} {audioname}",shell=True),audioname
 
 class Config:
     flattend = {}
@@ -257,6 +272,8 @@ class ConvertAPIClient:
 
 
 if __name__=="__main__":
-    convert =ConvertAPIClient()
-    print(convert(filename="a_001.mp3"))
+    # convert =ConvertAPIClient()
+    # print(convert(filename="a_001.mp3"))
+    subpro,audio_name= gen_mp3("a")
+    subpro.wait()
 
