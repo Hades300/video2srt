@@ -1,5 +1,5 @@
 from flask import Flask
-from flask import request
+from flask import request,abort
 from werkzeug.utils import secure_filename
 import os
 from utils import random_filename,seq2lines,gen_mp3
@@ -12,8 +12,10 @@ from time import time,sleep
 import logging
 from random import randint
 from glob import glob
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 UPLOAD_FILE_DIR = "upload"
 OUTPUT_DIR = "tmp"
 LOG = logging.getLogger(__name__)
@@ -80,7 +82,10 @@ def gen_task():
     return task_id
     filename: source_file
     """
-    f = request.files["source_file"]
+    f = request.files.get("source_file")
+    if not f:
+        app.logger("No file named source_file")
+        abort(400)
     token = str(uuid4())
     new_filename = token
     new_path = os.path.join(UPLOAD_FILE_DIR,new_filename)
@@ -125,6 +130,7 @@ def split_and_convert(filename,output_dir=OUTPUT_DIR):
     subtask,audiofilename = gen_mp3(filename)
     subtask.wait() # split audio file from video
     files_table = audio_split(audiofilename,output_dir)
+    LOG.warning(f"file table:{files_table}")
     t = ConvertTask(files_table)
     res = t.run()
     DefaultStorage.done(token,res)
